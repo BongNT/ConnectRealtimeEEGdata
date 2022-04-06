@@ -27,7 +27,7 @@ public:
 	void startReceive() {
 		// resolve the stream of interet
 		std::cout << "Now resolving streams..." << std::endl;
-		std::vector<lsl::stream_info> results = lsl::resolve_stream(name, type);
+		std::vector<lsl::stream_info> results = lsl::resolve_stream("type", type);
 		if (results.empty()) throw std::runtime_error("No stream found");
 
 		std::cout << "Here is what was resolved: " << std::endl;
@@ -42,7 +42,7 @@ public:
 
 		std::vector<float> sample;
 		std::vector<std::vector<float>> chunk_nested_vector;
-		for (int i = 0; i < max_samples; ++i) {
+		for (int i = 0; ; ++i) {
 			// pull a single sample
 			inlet.pull_sample(sample);
 			printChunk(sample, inlet.get_channel_count());
@@ -51,14 +51,16 @@ public:
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 			// pull a chunk into a nested vector - easier, but slower
-			inlet.pull_chunk(chunk_nested_vector);
-			printChunk(chunk_nested_vector);
+			/*inlet.pull_chunk(chunk_nested_vector);
+			printChunk(chunk_nested_vector);*/
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
 			// pull a multiplexed chunk into a flat vector
-			inlet.pull_chunk_multiplexed(sample);
-			printChunk(sample, inlet.get_channel_count());
+			// inlet.pull_chunk_multiplexed(sample);
+			std::cout << sample.size()<<std::endl<<i;
+			// printChunk(sample, inlet.get_channel_count());
+			
 		}
 
 	}
@@ -92,7 +94,6 @@ public:
 			// make a new stream_info (100 Hz)
 			lsl::stream_info info(
 				name, type, nchannels, samplingrate, lsl::cf_float32, std::string(name) += type);
-
 			// add some description fields
 			info.desc().append_child_value("manufacturer", "LSL");
 			lsl::xml_element chns = info.desc().append_child("channels");
@@ -126,12 +127,16 @@ public:
 				std::this_thread::sleep_until(next_sample_time);
 
 				// send the sample
-				//std::cout << sample[0] << "\t" << sample[7] << std::endl;
-				outlet.push_sample(sample);
+				std::cout << sample[0] << "\t" << sample[7] << std::endl;
+				// outlet.push_sample(sample);
+				outlet.push_chunk_multiplexed(sample);
 				
 			}
+			std::cout << "Stop sending data. " << std::endl;
 		}
-		catch (std::exception& e) { std::cerr << "Got an exception: " << e.what() << std::endl; }
+		catch (std::exception& e) { 
+			std::cerr << "Got an exception: " << e.what() << std::endl;
+		}
 	}
 };
 
@@ -140,8 +145,8 @@ int main(int argc, char **argv) {
 	Outlet outlet;
 
 	
-	std::thread thread1(&Outlet::startSend, outlet);
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+	/*std::thread thread1(&Outlet::startSend, outlet);
+	std::this_thread::sleep_for(std::chrono::milliseconds(100000));*/
 	std::thread thread2(&Inlet::startReceive, inlet);
 	std::this_thread::sleep_for(std::chrono::milliseconds(100000));
 
